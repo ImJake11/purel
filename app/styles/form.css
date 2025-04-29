@@ -1,0 +1,29 @@
+.form-body::-webkit-scrollbar {
+  display: none;
+}
+
+.selection-tile {
+  border: solid 2px var(--primary);
+  height: 55px;
+  width: auto;
+  border-radius: 5px;
+  display: flex;
+  padding: 0px 10px;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.remove-btn {
+  font-size: 12px;
+  height: fit-content;
+  width: 40px;
+  height: 40px;
+  padding: 10px 15px;
+  background-color: var(--primary);
+  color: white;
+  opacity: 0.7;
+  border-radius: 100%;
+  align-self: center;
+  display: grid;
+  place-items: center;
+}
