@@ -1,0 +1,62 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../app/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model UserToken {
+  id       String   @unique @default("")
+  createAt DateTime @default(now())
+  expAt    DateTime
+  email    String
+}
+
+model Purel {
+  id          Int      @id @default(autoincrement())
+  reporttype  String
+  lat         Float
+  lng         Float
+  type        Int
+  status      Int
+  contact     String?
+  timestamp   DateTime @default(now())
+  landmark    String?
+  description String?
+
+  @@map("purel")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String
+  name      String
+  role      Role     @default(USER)
+  createdAt DateTime @default(now())
+  isLogout  Boolean  @default(false)
+  photoUrl  String   @default("")
+}
+
+model VerificationCode {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  code      String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+}
+
+enum Role {
+  USER
+  ADMIN
+  RESCUER
+}

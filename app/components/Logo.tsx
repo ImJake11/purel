@@ -4,11 +4,11 @@ const font = localfont({ src: "../../public/font/StyleScript-Regular.ttf" });
 
 export default function Logo() {
   return (
-    <div className="w-full flex gap-[5px] justify-end">
-      <span className={`${font.className} text-3xl`}>pureL</span>
+    <div className="w-fit flex gap-[5px] justify-start">
+      <span className={`${font.className} text-1xl`}>pureL</span>
       <svg
-        height="30px"
-        width="30px"
+        height="15px"
+        width="15px"
         version="1.1"
         id="Layer_1"
         viewBox="0 0 512.001 512.001"

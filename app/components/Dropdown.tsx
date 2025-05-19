@@ -4,6 +4,8 @@ import { useState } from "react";
 import "@/app/styles/form.css";
 import { AnimatePresence, delay, motion } from "framer-motion";
 import { setInterval } from "timers/promises";
+import { useDispatch } from "react-redux";
+import { updateDropdowns } from "../lib/redux/formReducer";
 
 const drorpdownArrow = (
   <svg viewBox="0 0 24 24" fill="none" height={30}>
@@ -28,14 +30,21 @@ const drorpdownArrow = (
 interface DropdownProps {
   options: string[];
   label: string;
+  selectedData: number,
+  name: string
 }
 
-export default function Dropdown({ options, label }: DropdownProps) {
-  const [selected, setSelected] = useState("");
+export default function Dropdown({ data }: { data: DropdownProps }) {
+
+  const dispatch = useDispatch();
+
   const [isOpen, setOpen] = useState(false);
 
-  const handleChange = (option: string) => {
-    setSelected(option);
+
+  const handleChange = (option: number) => {
+
+    dispatch(updateDropdowns({ name: data.name, data: option }))
+
 
     setTimeout(() => {
       setOpen(false);
@@ -69,12 +78,16 @@ export default function Dropdown({ options, label }: DropdownProps) {
             opacite: { delay: 0.26 },
           }}
         >
-          {options.map((o, i) => {
+          {data.options.map((o, i) => {
+
+
+            const isSelected: boolean = data.selectedData === i;
+
             return (
               <motion.div
                 key={i}
                 className="w-full h-[50px] flex items-center gap-1.5"
-                onClick={() => handleChange(o)}
+                onClick={() => handleChange(i)}
               >
                 {/** RADIO BUTTON */}
                 <div className="rounded-full h-[20px] w-[20px] border-[1px] border-solid border-black grid place-items-center p-[2px]">
@@ -83,7 +96,7 @@ export default function Dropdown({ options, label }: DropdownProps) {
                       scale: 0,
                     }}
                     animate={{
-                      scale: selected === o ? 1 : 0,
+                      scale: isSelected ? 1 : 0,
                     }}
                     transition={{
                       ease: "linear",
@@ -102,23 +115,23 @@ export default function Dropdown({ options, label }: DropdownProps) {
   );
 
   return (
-    <div className="w-full flex flex-col gap-[10px]">
+    <div className="dropdown w-full flex flex-col gap-[10px]">
       <label
         htmlFor="custom-dropdown"
         className="text-[16px] font-medium text-gray-600"
       >
-        {label}
+        {data.name}
       </label>
       <div className="selection-tile" onClick={() => setOpen(!isOpen)}>
         <AnimatePresence mode="wait">
           <motion.span
-            key={selected} // Ensures Framer Motion treats the text as a new element when `selected` changes
+            key={data.selectedData} // Ensures Framer Motion treats the text as a new element when `selected` changes
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
           >
-            {selected === "" ? "Select an option" : selected}
+            {data.selectedData === -1 ? "Select an option" : data.options[data.selectedData]}
           </motion.span>
         </AnimatePresence>
         <motion.div

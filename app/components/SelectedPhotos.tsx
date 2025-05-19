@@ -1,9 +1,9 @@
 "use client";
 
 import { useSelector } from "react-redux";
-import { RootState } from "../redux/store";
+import { RootState } from "../lib/redux/store";
 import { useDispatch } from "react-redux";
-import { removeImage } from "../redux/formReducer";
+import { removeImage } from "../lib/redux/formReducer";
 import { AnimatePresence, motion } from "framer-motion";
 
 export default function SelectedPhotos() {
@@ -12,7 +12,12 @@ export default function SelectedPhotos() {
   const imgs = useSelector((state: RootState) => state.form.img);
 
   return (
-    <motion.div className={`w-full flex gap-[10px] justify-center`}>
+    <motion.div className={`w-full flex gap-[10px] justify-center`}
+
+      animate={{
+        height: imgs.length != 0 ? "auto" : "0px", 
+      }}
+    >
       <AnimatePresence>
         {imgs.map((img, i) => (
           <motion.div
@@ -44,7 +49,7 @@ export default function SelectedPhotos() {
               {removeIcon}
             </motion.button>
           </motion.div>
-          
+
         ))}
       </AnimatePresence>
     </motion.div>

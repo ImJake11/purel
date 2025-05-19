@@ -1,0 +1,29 @@
+.loading-bg {
+    position: absolute;
+    width: 100vw;
+    height: 100vh;
+    background-color: rgba(50, 50, 50, 0.8);
+    display: grid;
+    place-items: center;
+}
+
+.loading-bg .loading-con {
+    width: 300px;
+    height: 200px;
+    background-color: white;
+    border-radius: 20px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+
+}
+
+.loading-bg span {
+    transform: translateY(-10px);
+}
+
+
+.lottie-con {
+    width: 230px;
+}

@@ -1,83 +1,183 @@
 "use client";
 
 import Dropdown from "@/app/components/Dropdown";
-import Logo from "@/app/components/Logo";
 import "@/app/styles/form.css";
 import MapComponent from "@/app/components/MapComponent.";
 import { AnimatePresence, motion } from "framer-motion";
 import SelectedPhotos from "@/app/components/SelectedPhotos";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useDispatch } from "react-redux";
-import { setImages } from "@/app/redux/formReducer";
+import { resetData, setImages } from "@/app/lib/redux/formReducer";
 import { useSelector } from "react-redux";
-import { RootState } from "@/app/redux/store";
+import { RootState } from "@/app/lib/redux/store";
+import LoadingIndicator from "@/app/components/LoadingIndicator";
+import { ReportModel } from "@/app/lib/models/ReportModel";
+import { ReportType } from "@/app/lib/enum/ReportType";
+import Navbar from "@/app/components/NavBar";
+import ReportingServices from "@/app/lib/services/ReportingServices";
+import "remixicon/fonts/remixicon.css";
+
 
 export default function Page() {
-  const [isPinLoc, setPinLoc] = useState(true);
-  const imgs = useSelector((state: RootState) => state.form.img);
-
   const dispatch = useDispatch();
 
-  const handleImages = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const [isPinLoc, setPinLoc] = useState(true);
+
+  const formReducer = useSelector((state: RootState) => state.form);
+  const [isDataValid, setDataValidation] = useState(false);
+
+
+
+  const [reportData, setReportData] = useState<ReportModel>({
+    reportType: ReportType.NONE,
+    animalType: -1,
+    status: -1,
+    description: "",
+    lat: 0.0,
+    lng: 0.0,
+    landmark: "",
+    images: [],
+    contact: "09",
+  });
+
+
+  const reportServices = new ReportingServices(dispatch, reportData);
+
+
+
+  const handleImages = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
     if (files) {
       const fileArray = Array.from(files).slice(0, 3); // Limit to 3 images
-      const imageUrls = fileArray.map((file) => URL.createObjectURL(file)); // Generate preview URLs
+      const imageUrls = [] as string[];
 
-      dispatch(setImages(imageUrls)); // Update Redux state with image URLs
+
+
+      for (const file of fileArray) {
+        const base64 = await new Promise<string>((resolve) => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve(reader.result as string);
+          reader.readAsDataURL(file);
+        });
+
+
+        imageUrls.push(base64);
+
+      }
+
+      dispatch(setImages(imageUrls));
+
     }
   };
 
+  const handleText = (event: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const value = event.target.value;
+    setReportData({ ...reportData, [event.target.name]: value })
+  }
+
+
+  useEffect(() => {
+    setReportData({ ...reportData, ["images"]: formReducer.img });
+  }, [formReducer.img]);
+
+
+  useEffect(() => {
+    setReportData({ ...reportData, ["reportType"]: isPinLoc ? ReportType.DEVICELOCATION : ReportType.PROVIDEDLOCATION });
+  }, [isPinLoc]);
+
+  useEffect(() => {
+    setReportData(prev => ({
+      ...prev, animalType: formReducer.animalType,
+      status: formReducer.status,
+    }));
+
+  }, [formReducer]);
+
+  useEffect(() => {
+    setReportData(prev => ({
+      ...prev, lat: formReducer.loc.lat,
+      lng: formReducer.loc.lng,
+    }))
+
+    console.log(reportData.lat);
+  }, [formReducer]);
+
+  useEffect(() => {
+
+    if (isPinLoc) {
+      if (reportData.animalType != -1 && reportData.status != -1 && reportData.images.length != 0) {
+        setDataValidation(true);
+      }
+    } else {
+      if (reportData.animalType != -1 && reportData.status != -1 && reportData.images.length != 0 && reportData.landmark != "") {
+        setDataValidation(true);
+      }
+    }
+  }, [reportData]);
+
+  const handleSubmit = async () => {
+
+    const isSuccess = await reportServices.submitReport();
+
+
+    if (isSuccess) {
+
+      setReportData({
+        reportType: ReportType.NONE,
+        animalType: -1,
+        status: -1,
+        description: "",
+        lat: 0.0,
+        lng: 0.0,
+        landmark: "",
+        images: [],
+        contact: "09",
+      });
+      setDataValidation(false);
+      dispatch(resetData());
+    }
+  }
+  /////// COMPONENTS ////
+
   const statusTypeDropdown = (
     <Dropdown
-      key={"dropdown"}
-      options={statusType}
-      label={"Select Animal status"}
+      key={"dropdown-status"}
+      data={
+        {
+          options: statusType,
+          label: "Select Animal Status",
+          selectedData: reportData.status,
+          name: "status"
+        }
+
+      }
+
     />
   );
 
   const animalTypeDropdownCon = (
+
     <Dropdown
-      key={"dropdown=animal"}
-      options={animalList}
-      label={"Select Animal type"}
+      key={"dropdown-animal"}
+      data={
+        {
+          options: animalList,
+          label: "Select Animal status",
+          selectedData: reportData.animalType,
+          name: "type"
+        }
+      }
     />
   );
 
   const mapCon = (
-    <AnimatePresence>
-      {isPinLoc ? (
-        <motion.div
-          className="flex flex-col gap-[10px] w-full"
-          animate={{
-            opacity: [0, 1],
-            height: ["0px", "auto"],
-          }}
-          exit={{
-            opacity: 0,
-            height: "0px",
-          }}
-          transition={{
-            duration: 0.3,
-            ease: "linear",
-            damping: 30,
-          }}
-        >
-          <motion.div className="w-full h-[250px] rounded-[10px] bg-gray-300 overflow-hidden ">
-            {/**<MapComponent /> */}
-          </motion.div>
-          <span className="text-[16px] text-gray-500 ">
-            This is your current location
-          </span>
-        </motion.div>
-      ) : null}
-    </AnimatePresence>
+    <MapComponent isShow={isPinLoc} />
   );
 
   const uploadCom = (
     <div className="w-full relative">
       <button className="flex justify-between m-[0px_0px_10px_0px] w-full h-fit p-[15px_20px] bg-[var(--primary)] rounded-[10px] text-white text-[14px]">
-        Select 1 to 3 photos {photoIcon}
+        {formReducer.img.length > 0 ? "Add more photo" : " Select 1 to 3 photos"} {photoIcon}
       </button>
       <input
         id="image-picker"
@@ -96,11 +196,38 @@ export default function Page() {
         Provide short description
       </label>
       <textarea
+        value={reportData.description}
         name="description"
         id="description"
         className="border-[2px] border-solid border-[var(--primary)] rounded-[5px] p-[5px]"
         rows={5}
+        onChange={(e) => handleText(e)}
       ></textarea>
+    </motion.div>
+  );
+
+  const contactInformation = (
+    <motion.div className="w-full flex flex-col gap-[5px] text-[16px] ">
+      <label htmlFor="contact" className="text-gray-600">
+        Contact Information (Optional)
+      </label>
+      <input
+        value={reportData.contact}
+        type="tel"
+        inputMode="numeric"
+        maxLength={11}
+        name="contact"
+        id="contact"
+        className="border-[2px] border-solid border-[var(--primary)] rounded-[5px] p-[15px]"
+        onChange={(e) => {
+          const value = e.target.value.replace(/\D/g, '');
+          if (e.target.value.length < 3) {
+            setReportData({ ...reportData, [e.target.name]: "09" })
+          } else {
+            setReportData({ ...reportData, [e.target.name]: value })
+          }
+        }}
+      />
     </motion.div>
   );
 
@@ -125,7 +252,7 @@ export default function Page() {
     <AnimatePresence>
       {!isPinLoc && (
         <motion.div
-          className="w-full flex flex-col"
+          className="landmark w-full flex flex-col"
           animate={{
             opacity: [0, 1],
             transform: ["translateY(100px)", "translateY(0px)"],
@@ -144,8 +271,10 @@ export default function Page() {
             Provide Landmark
           </label>
           <textarea
+            value={reportData.landmark}
             name="landmark"
             minLength={5}
+            onChange={(e) => handleText(e)}
             className="border-[2px] border-solid border-[var(--primary)] rounded-[10px] p-[5px] text-[16px]"
           ></textarea>
         </motion.div>
@@ -154,23 +283,41 @@ export default function Page() {
   );
 
   const submitBtn = (
-    <button className="w-[200px] h-[60px] rounded-[10px] bg-[var(--primary)] p-[10px] text-white text-[16px] self-end">
+    <button className="w-[200px] min-h-[60px] rounded-[10px] p-[10px] text-white text-[16px] self-end"
+
+      style={{
+        backgroundColor: isDataValid ? "var(--primary)" : "gray",
+      }}
+      onClick={handleSubmit}
+    >
       Submit
     </button>
   );
 
-  return (
-    <div className="w-screen h-screen bg-white p-[20px_40px] flex flex-col gap-5">
-      <Logo />
 
+  const guides = <>
+    {
+      !isDataValid && <div className="guide-column flex flex-col gap-5px text-[1rem] text-red-500">
+        <span className="text-gray-700 font-semibold">Do the remaining steps required to submit your report</span>
+        <div className="h-[10px]" ></div>
+        {reportData.animalType === -1 && <div><i className="ri-close-fill"></i> <p>Select Animal Type</p></div>}
+        {reportData.status === -1 && <div><i className="ri-close-fill"></i> <p>Select Animal Status</p></div>}
+        {reportData.images.length === 0 && <div><i className="ri-close-fill"></i><p>Select at least 1 photo</p></div>}
+        {!isPinLoc && reportData.landmark === "" && <div><i className="ri-close-fill"></i><p>Provide a landmark</p></div>}
+      </div>
+    }
+  </>
+
+  return (
+    <div className="form-main">
+      <div className="nav">
+        <Navbar />
+      </div>
       {/** BODY */}
 
-      <motion.div
+      <div
         className="form-body w-full flex flex-col flex-[1] text-[18px] gap-[15px] overflow-auto"
-        layout
-        transition={{
-          duration: 0.2,
-        }}
+
       >
         <span className="text-3xl font-semibold mb-[20px]">
           Report an Animal in{" "}
@@ -184,10 +331,15 @@ export default function Page() {
         {descriptionCon}
         <SelectedPhotos />
         {uploadCom}
-        <div className="min-h-[50px]"></div>
+        {contactInformation}
+        <div className="min-h-[20px]"></div>
+        {guides}
+        <div className="min-h-[20px]"></div>
         {submitBtn}
         <div className="h-[20px]"></div>
-      </motion.div>
+
+      </div>
+      <LoadingIndicator />
     </div>
   );
 }
@@ -198,9 +350,9 @@ const btn = (
   isSelected: boolean,
   onClick: () => void
 ) => (
-  <div className="flex flex-col gap-1.5 w-full text-[12px] text-gray-600  ">
+  <div className="flex flex-col gap-1.5 w-full text-[.8rem] text-gray-600  ">
     <span className="flex gap-1.5 items-center">
-      {infoIcon}
+      <i className="ri-information-fill text-[var(--primary)] text-[1.3rem]"></i>
       {info}
     </span>
     <motion.div className="flex w-full gap-4 items-center" layout>
@@ -219,7 +371,7 @@ const btn = (
         )}
       </AnimatePresence>
       <motion.button
-        className="h-fit rounded-[10px] p-[10px_20px] border-[2px] border-solid border-[var(--primary)] text-[14px] font-semibold"
+        className="h-fit rounded-[10px] p-[10px_20px] border-[2px] border-solid border-[var(--primary)] text-[1rem] font-semibold"
         animate={{
           backgroundColor: isSelected ? "var(--primary)" : "#ffffff",
           color: isSelected ? "#ffffff" : "var(--primary)",
@@ -244,55 +396,6 @@ const btn = (
   </div>
 );
 
-const infoIcon = (
-  <svg
-    height={20}
-    fill="#000000"
-    viewBox="0 0 24 24"
-    id="information-circle"
-    data-name="Flat Line"
-    xmlns="http://www.w3.org/2000/svg"
-  >
-    <g id="SVGRepo_bgCarrier" strokeWidth="0"></g>
-    <g
-      id="SVGRepo_tracerCarrier"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    ></g>
-    <g id="SVGRepo_iconCarrier">
-      <path
-        id="secondary"
-        d="M3,12a9,9,0,0,1,9-9h0a9,9,0,0,1,9,9h0a9,9,0,0,1-9,9h0a9,9,0,0,1-9-9Z"
-        style={{ fill: "var(--primary)", strokeWidth: 2 }}
-      ></path>
-      <line
-        id="primary-upstroke"
-        x1="12.05"
-        y1="8"
-        x2="11.95"
-        y2="8"
-        style={{
-          fill: "none",
-          stroke: "#4a5565",
-          strokeLinecap: "round",
-          strokeLinejoin: "round",
-          strokeWidth: 2.5,
-        }}
-      ></line>
-      <path
-        id="primary"
-        d="M12,13v3M3,12a9,9,0,0,0,9,9h0a9,9,0,0,0,9-9h0a9,9,0,0,0-9-9h0a9,9,0,0,0-9,9Z"
-        style={{
-          fill: "none",
-          stroke: "#4a5565",
-          strokeLinecap: "round",
-          strokeLinejoin: "round",
-          strokeWidth: 2,
-        }}
-      ></path>
-    </g>
-  </svg>
-);
 
 const handpoint = (
   <svg
