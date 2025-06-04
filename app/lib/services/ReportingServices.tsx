@@ -1,65 +1,74 @@
-import { ref, uploadString } from "firebase/storage";
 import { AppDispatch } from "../redux/store";
 import { ReportModel } from "../models/ReportModel";
 import { toggleOff, toggleOn, toggleSuccessMessage } from "../redux/loadingReducer";
+import { addErrorReport, setInitialData, toggleReportProgress, updateFinalizingStatus, updateImageStatus, updateReportStatus } from "../redux/reportProgressReducer";
+import ProgressType from "../enum/ProgressType";
+import { resetData } from "../redux/formReducer";
 
-interface DatabaseReport {
-    id: string,
-    isSuccess: boolean,
-}
 
 class ReportingServices {
     private dispatch: AppDispatch;
     private data: ReportModel;
+    private error: number;
 
-    constructor(dispath: AppDispatch, data: ReportModel) {
+    constructor(dispath: AppDispatch, data: ReportModel, error: number) {
         this.dispatch = dispath;
         this.data = data;
+        this.error = error;
     }
 
 
     /// return true if it is success so front end will reset the users selected data
     async submitReport(): Promise<boolean> {
 
-        this.dispatch(toggleOn("Submitting your report...."));
+        this.dispatch(setInitialData(this.data.images.length));
+        this.dispatch(toggleReportProgress());
 
+        const id = await this.saveToDatabase();
 
-        try {
-            const { id, isSuccess } = await this.saveToDatabase();
-
-            if (!isSuccess) {
-                return false;
-            }
-
-            await this.uploadImagesToFirebase(id);
-
-            this.dispatch(toggleSuccessMessage("Your report is submitted"));
-
-            setTimeout(() => {
-                this.dispatch(toggleOff());
-            }, 1000);
-
-            return true;
-
-        } catch (e) {
-            this.dispatch(toggleOff());
+        if (!id) {
+            this.dispatch(addErrorReport("Report submission failed"));
             return false;
         }
 
+        await this.uploadImagesToFirebase(id);
+
+
+        ///// IF ERROR LENGTH IS MORE THAN 0 MEANS ERROR OCCURS WHILE PUBLISHING THE REPORT
+        const hasError = this.error <= 0;
+
+        if (hasError) {
+            setTimeout(() => {
+                this.dispatch(toggleReportProgress());
+            }, 2000);
+        }
+
+        return true;
     }
 
     /// save data to database
-    async saveToDatabase(): Promise<DatabaseReport> {
+    async saveToDatabase(): Promise<string | null> {
 
+        this.dispatch(updateReportStatus(ProgressType.PROCESSING));
 
         const data = this.data;
-        const token = sessionStorage.getItem("session");
+
+        console.log(JSON.stringify({
+            reporttype: data.reportType,
+            description: data.description,
+            lat: Number(data.lat),
+            lng: Number(data.lng),
+            type: Number(data.animalType),
+            status: Number(data.status),
+            contact: data.contact,
+            landmark: data.landmark,
+            images: [],
+        }));
 
         const request = await fetch("/api/report", {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
-                "Authorization": `Bearer ${token}`,
             },
             body: JSON.stringify({
                 reporttype: data.reportType,
@@ -67,64 +76,84 @@ class ReportingServices {
                 lat: Number(data.lat),
                 lng: Number(data.lng),
                 type: Number(data.animalType),
-                status:Number( data.status),
+                status: Number(data.status),
                 contact: data.contact,
                 landmark: data.landmark,
                 images: [],
             })
         });
 
-        if(!request.ok){
-            console.log(token);
-            console.log(await request.json())
-            this.dispatch(toggleOff());
-            return {
-                id: "-1",
-                isSuccess: false,
-            }
+        if (!request.ok) {
+            this.dispatch(addErrorReport("Failed to upload Report"));
+            return null;
         }
 
-        const { id, success } = await request.json();
+        const { id } = await request.json();
 
-        return {
-            id: id, isSuccess: success,
-        }
+        console.log(id);
+
+        this.dispatch(updateReportStatus(ProgressType.FINISHED));
+
+        return id;;
     }
 
 
     /// upload image to firebase 
     async uploadImagesToFirebase(reportID: string) {
 
-        console.log(`Uploading image: ${this.data.images.length}`);
+        const images: string[] = this.data.images;
+        const imagesURL: string[] = [];
 
-        try {
+        for (let i = 0; i < images.length; i++) {
 
-            const images: string[] = this.data.images;
+            this.dispatch(updateImageStatus({ index: i, status: ProgressType.PROCESSING }));
 
-            for (const img of images) {
-                const request = await fetch("/api/firebase", {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json",
-                    },
-                    body: JSON.stringify({
-                        image: img,
-                        reportid: "1",
-                    })
+            const request = await fetch("/api/firebase", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                    image: images[i],
+                    reportid: reportID,
                 })
+            })
 
-                if (!request.ok) {
-                    console.log(`Error uploading this image ${img}`)
-                    continue;
-                }
-
-
+            if (!request.ok) {
+                this.dispatch(addErrorReport(`Failed to upload image ${i}, Server error`));
+                this.dispatch(updateImageStatus({ index: i, status: ProgressType.ERROR }))
+                continue;
+            } else {
+                const { url } = await request.json();
+                imagesURL.push(url);
+                this.dispatch(updateImageStatus({ index: i, status: ProgressType.FINISHED }));
             }
 
-        } catch (e) {
-            console.log("Error: Something went wrong uploading images to database");
-            throw new Error("Error uploading to firebase");
+
         }
+
+
+        //// ONCE ALL IMAGES IS UPLOADED UPLOAD IT TO DATABASE AGAIN 
+        this.dispatch(updateFinalizingStatus(ProgressType.PROCESSING));
+
+        const request = await fetch("/api/report", {
+            method: "PUT",
+            headers: {
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+                reportID: reportID,
+                imageURL: imagesURL,
+            })
+        });
+
+        if (!request.ok) {
+            this.dispatch(addErrorReport("Failed to finalize report"))
+            this.dispatch(updateFinalizingStatus(ProgressType.ERROR));
+            return;
+        }
+
+        this.dispatch(updateFinalizingStatus(ProgressType.FINISHED));
     }
 }
 

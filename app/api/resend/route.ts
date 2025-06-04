@@ -1,30 +1,13 @@
-import EmailTemplate from "@/app/components/EmailTemplate";
 import { NextRequest, NextResponse } from "next/server";
-import { Resend } from "resend";
-import dotenv from "dotenv";
-
-dotenv.config();
-
-const resend = new Resend(process.env.RESEND_API);
+import { sendEmail } from "@/app/lib/email/sendEmail";
 
 export async function POST(request: NextRequest) {
-
 
     try {
 
         const { name, code, email } = await request.json();
 
-
-        const { data, error } = await resend.emails.send({
-            from: "PureL <noreply@jakejug.site>",
-            subject: "Email Verification",
-            to: [email],
-            react: EmailTemplate({ name: name, code: code }),
-        });
-
-        if (error) {
-            return NextResponse.json({ message: error.message }, { status: 500 });
-        }
+        const data = await sendEmail({ name, code, email });
 
         return NextResponse.json({ submittedData: data });
 

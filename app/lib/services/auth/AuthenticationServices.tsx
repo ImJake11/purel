@@ -1,6 +1,10 @@
+import { signIn, signOut, useSession } from "next-auth/react";
 import generateCode from "../../functions/codeGenerator";
 import { setCode, setTimeExpiration } from "../../redux/authReducer";
 import { AppDispatch } from "../../redux/store";
+import { toggleOff, toggleOn } from "../../redux/loadingReducer";
+import AuthType from "../../enum/AuthType";
+import { a, em } from "framer-motion/client";
 
 interface AuthProps {
     name: string,
@@ -104,6 +108,7 @@ class AuthServices {
                 "Content-Type": "application/json",
             },
             body: JSON.stringify({
+                auth: AuthType.LOCALAUTH,
                 name: this.data.name,
                 password: this.data.password,
                 email: this.data.email,
@@ -113,13 +118,18 @@ class AuthServices {
         if (!addUserRequest.ok) {
             return "error";
         }
+        const sessionRequest = await fetch("/api/session", {
+            method: "POST",
+            body: JSON.stringify({
+                username: this.data.name,
+                email: this.data.email,
+            })
+        });
 
-        const { session } = await addUserRequest.json();
 
-
-        /// add session key to the session storage
-        sessionStorage.setItem("session", session);
-
+        if (!sessionRequest.ok) {
+            return "error";
+        }
 
         const removeVerificationCode = await fetch("/api/verification-code", {
             method: "DELETE",
@@ -184,23 +194,65 @@ class AuthServices {
         return "success";
     }
 
-    async checkEmailExistence(): Promise<boolean> {
+
+    //// CHECK IF THE USER EXISTS IN THE DATABASE
+    /// AND CHECK USER AUTH METHOD USED WITH THIS EMAIL
+    async getUserData(): Promise<any> {
 
         const checkRequest = await fetch(`/api/users/${this.data.email}`, {
             method: "GET",
         });
 
-        const { existing } = await checkRequest.json();
+        const { userData } = await checkRequest.json();
 
         if (!checkRequest.ok) {
             console.log("error");
             throw Error("Api error");
         }
 
-        return existing;
-
+        return userData;
     }
 
+
+    async localSignIn(): Promise<{
+        success: boolean,
+        message: string,
+        username: string,
+    }> {
+
+        const request = await fetch("/api/login", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+
+            },
+            body: JSON.stringify({
+                email: this.data.email,
+                password: this.data.password,
+                auth: AuthType.LOCALAUTH,
+            })
+        });
+
+        if (!request.ok) {
+
+            const { error } = await request.json();
+
+            return {
+                success: false,
+                message: error,
+                username: "",
+            }
+        }
+
+
+        const { username } = await request.json();
+
+        return {
+            username: username,
+            success: true,
+            message: "Successfully logged in",
+        }
+    }
 }
 
 export default AuthServices;

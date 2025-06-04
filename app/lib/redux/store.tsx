@@ -3,6 +3,9 @@ import { configureStore } from "@reduxjs/toolkit";
 import formReducer from "./formReducer";
 import loadingReducer from "./loadingReducer";
 import authReducer from "./authReducer";
+import sidebar from "./sideBarReducer";
+import filter from "./filterReducer";
+import progress from "./reportProgressReducer";
 
 const store = configureStore({
 
@@ -10,6 +13,9 @@ const store = configureStore({
     form: formReducer,
     loading: loadingReducer,
     auth: authReducer,
+    sidebar: sidebar,
+    filter: filter,
+    progress: progress,
   },
 });
 

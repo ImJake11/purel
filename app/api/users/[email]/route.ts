@@ -18,11 +18,7 @@ export async function GET(
             }
         });
 
-
-        if (!user) {
-            return NextResponse.json({ existing: false }, { status: 200 });
-        }
-        return NextResponse.json({ existing: true }, { status: 200 });
+        return NextResponse.json({ userData: user }, { status: 200 });
 
     } catch (e) {
         return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });

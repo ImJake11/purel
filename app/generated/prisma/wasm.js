@@ -131,7 +131,8 @@ exports.Prisma.PurelScalarFieldEnum = {
   timestamp: 'timestamp',
   landmark: 'landmark',
   description: 'description',
-  images: 'images'
+  images: 'images',
+  email: 'email'
 };
 
 exports.Prisma.UserScalarFieldEnum = {
@@ -140,6 +141,7 @@ exports.Prisma.UserScalarFieldEnum = {
   password: 'password',
   name: 'name',
   role: 'role',
+  authMethod: 'authMethod',
   createdAt: 'createdAt',
   isLogout: 'isLogout',
   photoUrl: 'photoUrl'
@@ -151,6 +153,22 @@ exports.Prisma.VerificationCodeScalarFieldEnum = {
   code: 'code',
   expiresAt: 'expiresAt',
   createdAt: 'createdAt'
+};
+
+exports.Prisma.PetScalarFieldEnum = {
+  id: 'id',
+  name: 'name',
+  species: 'species',
+  age: 'age',
+  sex: 'sex',
+  color: 'color',
+  rescued: 'rescued',
+  location: 'location',
+  health: 'health',
+  url: 'url',
+  notes: 'notes',
+  status: 'status',
+  availability: 'availability'
 };
 
 exports.Prisma.SortOrder = {
@@ -176,7 +194,8 @@ exports.Role = exports.$Enums.Role = {
 exports.Prisma.ModelName = {
   Purel: 'Purel',
   User: 'User',
-  VerificationCode: 'VerificationCode'
+  VerificationCode: 'VerificationCode',
+  Pet: 'Pet'
 };
 
 /**

@@ -15,7 +15,7 @@ datasource db {
 }
 
 model Purel {
-  id          Int      @id @default(autoincrement())
+  id          String      @id @default(cuid())
   reporttype  String
   lat         Float
   lng         Float
@@ -25,18 +25,20 @@ model Purel {
   timestamp   DateTime @default(now())
   landmark    String?
   description String?
-  images      String[]   @default([])
+  images      String[] @default([])
+  email       String
 }
 
 model User {
-  id        String   @id @default(cuid())
-  email     String   @unique
-  password  String
-  name      String
-  role      Role     @default(USER)
-  createdAt DateTime @default(now())
-  isLogout  Boolean  @default(false)
-  photoUrl  String   @default("")
+  id         String   @id @default(cuid())
+  email      String   @unique
+  password   String?
+  name       String
+  role       Role     @default(USER)
+  authMethod String   @default("Local Auth")
+  createdAt  DateTime @default(now())
+  isLogout   Boolean  @default(false)
+  photoUrl   String   @default("")
 }
 
 model VerificationCode {
@@ -45,6 +47,22 @@ model VerificationCode {
   code      String
   expiresAt DateTime
   createdAt DateTime @default(now())
+}
+
+model Pet {
+  id           String   @id @default(cuid())
+  name         String
+  species      String
+  age          String
+  sex          String
+  color        String
+  rescued      DateTime @default(now())
+  location     String
+  health       String
+  url          String
+  notes        String
+  status       String
+  availability Boolean  @default(false)
 }
 
 enum Role {

@@ -1,50 +1,38 @@
 import { createSlice, PayloadAction } from "@reduxjs/toolkit";
-
-interface LocationProps {
-  lat: number,
-  lng: number,
-}
+import { ReportType } from "../enum/ReportType";
+import { ReportModel } from "../models/ReportModel";
 
 
-const initialState = {
-  img: [] as string[],
-  loc: {
-    lat: 0,
-    lng: 0,
-  } as LocationProps,
+const initialState: ReportModel = {
+  reportType: ReportType.NONE,
   animalType: -1,
   status: -1,
+  description: "",
+  lat: 0.0,
+  lng: 0.0,
+  landmark: "",
+  images: [],
+  contact: "09",
 };
 
 const formReduce = createSlice({
   name: "form-reducer",
   initialState: initialState,
   reducers: {
-    setImages: (state, action: PayloadAction<string[]>) => {
-      state.img = [...state.img, ...action.payload];
-    },
-    removeImage: (state, action: PayloadAction<number>) => {
-      state.img.splice(action.payload, 1);
-    },
-    setLocation: (state, action: PayloadAction<{ lat: number, lng: number }>) => {
-      state.loc = action.payload;
-    }
-    ,
-    updateDropdowns: (state, action: PayloadAction<{ name: string, data: number }>) => {
+    updateFormData: (state, actions: PayloadAction<{ key: string, data: any }>) => {
+      const { key, data } = actions.payload;
 
-      if (action.payload.name === "type") {
-        state.animalType = action.payload.data;
-      } else {
-        state.status = action.payload.data;
-      }
+      return { ...state, [key]: data };
     },
-    resetData: (state) => {
-      state.animalType = -1;
-      state.img = [] as string[];
-      state.status = -1;
+    resetData: () => initialState,
+    addImage: (state, actions: PayloadAction<string>) => {
+      state.images.push(actions.payload);
+    },
+    removeImage: (state, actions: PayloadAction<number>) => {
+      state.images.splice(actions.payload, 1);
     }
   },
 });
 
-export const { setImages, removeImage, setLocation, updateDropdowns,resetData } = formReduce.actions;
+export const { updateFormData, resetData, addImage, removeImage } = formReduce.actions;
 export default formReduce.reducer;

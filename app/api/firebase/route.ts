@@ -1,5 +1,5 @@
 import { storage } from "@/app/lib/firebase/initialize";
-import { ref, uploadString } from "firebase/storage";
+import { getDownloadURL, ref, uploadString } from "firebase/storage";
 import { NextRequest, NextResponse } from "next/server";
 
 
@@ -21,13 +21,15 @@ export async function POST(request: NextRequest) {
 
         }
 
-        await uploadString(imageRef, image, "data_url");
+        const snapshot = await uploadString(imageRef, image, "data_url");
 
-        return NextResponse.json({ success: true, message: "Image succesffully uploaded" })
+        const url = await getDownloadURL(snapshot.ref);
 
-    } catch (E) {
+        return NextResponse.json({ url: url });
+
+    } catch (e) {
         console.log("Error uploading image");
-        return NextResponse.json({ success: false, message: "Upload faile" }, { status: 400 });
+        return NextResponse.json({ success: false, message: "Upload failed" }, { status: 400 });
 
     }
 }

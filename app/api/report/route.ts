@@ -1,36 +1,32 @@
 import { prisma } from "@/app/lib/prisma/prisma";
-import { checkSessionTokenValidity } from "@/app/lib/services/session/SessionServices";
+import { Resend } from "resend";
+import { cookies } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
+import ThankyouMessageTemplate from "@/app/lib/components/ThankyouMessageTemplate";
+import dotenv from "dotenv";
 
+dotenv.config();
 
+const resend = new Resend(process.env.RESEND_API);
 
 export async function POST(request: NextRequest) {
 
-    console.log("POST METHOD HIT")
-
     try {
 
+        const cookieStore = await cookies();
 
-        const reqHeader = request.headers.get("authorization");
+        const email = cookieStore.get("email")?.value;
 
-        const token = reqHeader?.split(" ")[1];
-
-        if (!token) {
-            return NextResponse.json({ message: "Invalid request, no session token found" }, { status: 400 });
+        if (!email) {
+            return NextResponse.json({ error: "Email is missing" }, { status: 404 });
         }
-
-        const isValidToken = checkSessionTokenValidity(token);
-
-        if (!isValidToken) {
-            return NextResponse.json({ message: "Session token expires or Invalid" }, { status: 400 });
-        }   
-
 
         const { reporttype, lat, lng, type, status, contact, landmark, description, images } = await request.json();
 
 
         const pureL = await prisma.purel.create({
             data: {
+                email,
                 reporttype,
                 lat,
                 lng,
@@ -46,11 +42,46 @@ export async function POST(request: NextRequest) {
             }
         })
 
-        return NextResponse.json({ success: true, id: pureL.id, message: "Successfully save to database" }, { status: 200 });
+
+        ///// SEND EMAIL TO USER ONCE REPORT IS DONE
+
+        /// get username from cookies
+        const username = cookieStore.get("username")?.value;
+
+        await resend.emails.send({
+            from: "PureL <noreply@jakejug.site>",
+            subject: "Thankyou for Submitting your Report",
+            to: [email],
+            react: ThankyouMessageTemplate({ name: username || "User" }),
+        });
+
+        return NextResponse.json({ id: pureL.id }, { status: 200 });
 
 
     } catch (e) {
 
         return NextResponse.json({ success: false, message: "Save failed" }, { status: 400 });
+    }
+}
+
+
+export async function PUT(request: NextRequest) {
+
+    try {
+
+        const { imageURL, reportID } = await request.json();
+
+        await prisma.purel.update({
+            data: {
+                images: imageURL,
+            },
+            where: {
+                id: reportID,
+            }
+        });
+
+        return NextResponse.json({ message: "Succesfully Updates report" }, { status: 200 });
+    } catch (e) {
+        return NextResponse.json({ error: "Internal Server Error" });
     }
 }

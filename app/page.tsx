@@ -1,5 +1,14 @@
+"use client";
+
 import Link from "next/link";
-import Logo from "./components/Logo";
+import Logo from "./lib/components/Logo";
+import LoadingIndicator from "./lib/components/LoadingIndicator";
+import { useDispatch } from "react-redux";
+import { useSession } from "next-auth/react";
+import { useEffect } from "react";
+import { toggleOff, toggleOn } from "./lib/redux/loadingReducer";
+import { useRouter } from "next/navigation";
+
 
 const paw = (
     <svg
@@ -43,7 +52,65 @@ const paw = (
         </g>
     </svg>
 );
+
 export default function Home() {
+
+    const { data: session, status } = useSession();
+    const dispatch = useDispatch();
+    const router = useRouter();
+
+
+
+    useEffect(() => {
+        const turnOffLoad = () => {
+            setTimeout(() => {
+                dispatch(toggleOff());
+            }, 1000);
+        }
+
+        dispatch(toggleOn("Checking user account"));
+
+        //// CHECK IF USER HAS SESSION DATA FROM OATH LOG IN
+        if (session) {
+            if (status === "authenticated") {
+                router.push("/report-form");
+            } else {
+                turnOffLoad();
+                return;
+            }
+        } else {
+
+            const checkUserSession = async () => {
+                const res = await fetch("/api/session", {
+                    method: "GET",
+                });
+
+
+                if (!res.ok) {
+                    turnOffLoad();
+                    return;
+                }
+
+
+                const { session } = await res.json();
+
+                if (session) {
+                    router.push("/report-form");
+                } else {
+                    turnOffLoad();
+
+                }
+
+            }
+
+            checkUserSession();
+        }
+
+
+
+    }, [status]);
+
+
 
 
     return (
@@ -87,6 +154,7 @@ export default function Home() {
                     Report Now{paw}
                 </button>
             </Link>
+            <LoadingIndicator />
         </div>
     );
 }
